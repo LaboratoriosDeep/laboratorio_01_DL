@@ -1,0 +1,6 @@
+# Ignorar datos
+data/
+*.sav
+
+# Ignorar carpetas ocultas de Python
+__pycache__/
