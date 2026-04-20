@@ -12,22 +12,17 @@ Métricas implementadas:
   - Matriz de confusión
   - AUC-ROC (cuando aplique para clasificación binaria)
 
-Por qué métricas macro en vez de weighted:
-  Con desbalance de clases, las métricas ponderadas favorecen a las mayoritarias
-  y pueden enmascarar el mal desempeño en clases minoritarias. El promedio macro
-  trata a cada clase con igual peso, revelando el comportamiento real del modelo.
 """
 
 import numpy as np
 import pandas as pd
+from sklearn.model_selection import StratifiedKFold 
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     classification_report, confusion_matrix, roc_auc_score
 )
 from sklearn.model_selection import LeaveOneOut
-
-from balancing import apply_balancing
-from config import IMBALANCE_STRATEGY, RANDOM_STATE
+from config import CV_N_FOLDS, RANDOM_STATE
 from tqdm import tqdm
 
 
@@ -90,11 +85,11 @@ def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray,
     }
 
 
-def loocv_evaluate(X: np.ndarray, y: np.ndarray,
-                   train_fn, predict_fn, predict_proba_fn=None,
-                   model_name: str = "Modelo") -> dict:
+def stratified_evaluate(X: np.ndarray, y: np.ndarray, 
+                        train_fn, predict_fn, predict_proba_fn=None, 
+                        model_name="Modelo") -> dict:
     """
-    Evalúa un modelo mediante Leave-One-Out Cross-Validation.
+    Evalúa un modelo mediante Stratified Cross-Validation.
 
     Parámetros
     ----------
@@ -109,35 +104,25 @@ def loocv_evaluate(X: np.ndarray, y: np.ndarray,
     -------
     dict con métricas agregadas sobre todos los folds
     """
-    loo   = LeaveOneOut()
+    # 10 folds es estandard
+    skf = StratifiedKFold(n_splits=CV_N_FOLDS, shuffle=True, random_state=RANDOM_STATE)
     preds = np.empty(len(y), dtype=y.dtype)
     
-    # Preparar array para probabilidades si aplica
-    if predict_proba_fn is not None:
-        n_classes = len(np.unique(y))
-        proba = np.empty((len(y), n_classes), dtype=float)
-    else:
-        proba = None
+    # Array de probabilidades
+    n_classes = len(np.unique(y))
+    proba = np.empty((len(y), n_classes), dtype=float) if predict_proba_fn else None
 
-    for fold, (train_idx, test_idx) in enumerate(tqdm(loo.split(X), total=len(X), desc=f"Evaluando {model_name}")):        
+    for train_idx, test_idx in tqdm(skf.split(X, y), total=10, desc=f"Evaluando {model_name}"):
         X_tr, y_tr = X[train_idx], y[train_idx]
-    
-        # Aplicar balanceo SOLO sobre datos de entrenamiento
-        X_tr, y_tr, _ = apply_balancing(X_tr, y_tr, strategy=IMBALANCE_STRATEGY)
-    
-        model = train_fn(X_tr, y_tr)
-        pred  = predict_fn(model, X[test_idx])
-        preds[test_idx] = pred
         
-        # Obtener probabilidades si se proporciona la función
-        if predict_proba_fn is not None:
-            try:
-                proba[test_idx] = predict_proba_fn(model, X[test_idx])
-            except:
-                proba = None
+        # Ojo, las funciones de entrenamiento hacen balanceo con class weights
+        model = train_fn(X_tr, y_tr)
+        
+        preds[test_idx] = predict_fn(model, X[test_idx])
+        if predict_proba_fn:
+            proba[test_idx] = predict_proba_fn(model, X[test_idx])
 
     return compute_metrics(y, preds, proba, model_name=model_name)
-
 
 def compare_models(results: list) -> pd.DataFrame:
     """
@@ -145,7 +130,7 @@ def compare_models(results: list) -> pd.DataFrame:
 
     Parámetros
     ----------
-    results : lista de dicts retornados por compute_metrics / loocv_evaluate
+    results : lista de dicts retornados por compute_metrics / stratified_evaluate
 
     Returns
     -------

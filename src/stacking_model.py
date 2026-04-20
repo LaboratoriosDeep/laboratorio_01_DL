@@ -12,18 +12,10 @@ Arquitectura de dos niveles:
   Nivel 1 (meta-clasificador):
     - LogisticRegression → aprende cómo combinar las predicciones base
 
-Diseño metodológico correcto:
-  Para evitar fuga de información, las predicciones del nivel 0 que se usan
-  para entrenar el meta-modelo se obtienen mediante cross_val_predict con LOOCV
-  sobre los datos de entrenamiento. Esto garantiza que el meta-modelo aprenda
-  de predicciones "out-of-fold" (nunca vio ese dato durante el entrenamiento
-  del modelo base).
-
 Justificación de la selección de modelos base:
   - Naive Bayes: simple, probabilístico, funciona bien con binarios y poco datos.
   - Árbol: captura patrones no lineales; su alta varianza beneficia al stacking.
   - LogisticRegression: modelo lineal estable, complementa a los anteriores.
-  La diversidad entre modelos base es clave para que el stacking aporte valor.
 """
 
 import numpy as np
@@ -31,7 +23,7 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import StackingClassifier
 from config import N_JOBS
-from base_estimators import make_decision_tree, make_logistic_regression
+from base_estimators_balancing import make_decision_tree, make_logistic_regression, make_gnb
 
 
 def build_base_estimators() -> list:
@@ -42,7 +34,7 @@ def build_base_estimators() -> list:
     -------
     list de (nombre, estimador)
     """
-    return [("gnb", GaussianNB()), ("dt", make_decision_tree(max_depth=10)), ("lr", make_logistic_regression())]
+    return [("gnb", make_gnb()), ("dt", make_decision_tree(max_depth=10)), ("lr", make_logistic_regression())]
 
 
 def build_meta_estimator() -> LogisticRegression:
@@ -60,10 +52,6 @@ def build_stacking_model() -> StackingClassifier:
     """
     Construye el StackingClassifier completo.
 
-    Usa cv=LeaveOneOut() internamente para generar predicciones out-of-fold
-    durante el entrenamiento del meta-modelo, consistente con la estrategia
-    de evaluación global del experimento.
-
     Returns
     -------
     StackingClassifier
@@ -73,7 +61,7 @@ def build_stacking_model() -> StackingClassifier:
     model = StackingClassifier(
         estimators=base,
         final_estimator=meta,
-        cv=5,  # LOOCV para consistencia con el protocolo experimental
+        cv=5, 
         passthrough=False,
         n_jobs=N_JOBS
     )

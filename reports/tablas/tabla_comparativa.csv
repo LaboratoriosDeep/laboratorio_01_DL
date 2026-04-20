@@ -1,4 +1,4 @@
 Modelo,Accuracy,Precision macro,Recall macro,F1-score macro,AUC-ROC
-Boosting,0.8329,0.7205,0.8347,0.7501,
-Bagging,0.8114,0.7048,0.8291,0.7302,
-Stacking,0.8105,0.6995,0.8143,0.7246,0.9048
+Boosting,0.8847,0.7764,0.8058,0.7898,
+Stacking,0.8418,0.7288,0.8399,0.7598,0.9189
+Bagging,0.8409,0.7255,0.8299,0.7557,

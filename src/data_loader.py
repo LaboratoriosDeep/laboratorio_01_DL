@@ -38,8 +38,7 @@ def get_X_y(df, target_col='GDS'):
 
 def verify_integrity(X):
     """
-    Verifica que no haya nulos y que los predictores sean 100% binarios, 
-    como exige la rúbrica del laboratorio.
+    Verifica que no haya nulos y que los predictores sean todos binarios.
     """
     missing = X.isnull().sum().sum()
     if missing > 0:
@@ -52,12 +51,11 @@ def verify_integrity(X):
     if not is_binary:
         print("[data_loader] ADVERTENCIA: Hay columnas con valores no binarios.")
     else:
-        print("[data_loader] Todos los predictores son binarios (0/1).")
+        print("[data_loader] Todos los predictores son binarios.")
 
 # ── Prueba rápida ─────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    # Si ejecutas este archivo directamente, probará si todo funciona.
-    # Asegúrate de poner el nombre correcto de tu archivo .sav
+    
     ruta = 'data/raw/15_atributos_R0-R5.sav' 
     
     df_raw = load_data(ruta)

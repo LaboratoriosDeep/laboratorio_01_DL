@@ -26,16 +26,13 @@ NON_FEATURE_COLS = ["ID", "GDS", "GDS_R1", "GDS_R2", "GDS_R3", "GDS_R4", "GDS_R5
 TARGET_COL = "GDS_R3"
 
 # ── Protocolo experimental ────────────────────────────────────────────────────
-# Leave-One-Out: óptimo para datasets muy pequeños (n=22)
-CV_STRATEGY      = "loocv"       # "loocv" | "stratified_kfold"
-CV_N_FOLDS       = 5             # usado solo si CV_STRATEGY = "stratified_kfold"
+# Se utiliza stratified cross validation
+CV_N_FOLDS       = 10
 RANDOM_STATE     = 42
 
 # ── Tratamiento del desbalance ────────────────────────────────────────────────
 # "class_weight"  → pesos inversos de clase (sin generar datos nuevos)
-# "smote"         → sobremuestreo sintético (requiere imblearn)
-# "none"          → sin tratamiento
-IMBALANCE_STRATEGY = "smote"
+IMBALANCE_STRATEGY = "class_weight"
 
 # ── Modelos base para Stacking ────────────────────────────────────────────────
 # Clasificadores que conforman el nivel 0 del stacking
@@ -46,10 +43,9 @@ STACKING_META_ESTIMATOR   = "lr"
 # ── Parámetros de modelos ─────────────────────────────────────────────────────
 BAGGING_N_ESTIMATORS   = 100      # Aumentado para mejor rendimiento
 BOOSTING_N_ESTIMATORS  = 50
-BOOSTING_LEARNING_RATE = 0.3      # Reducido para evitar sobreajuste
-KNN_N_NEIGHBORS        = 3        # mínimo razonable para n=22
-DT_MAX_DEPTH           = 4        # Aumentado ligeramente para capturar más patrones
-LR_MAX_ITER            = 2000     # Aumentado para asegurar convergencia
+BOOSTING_LEARNING_RATE = 0.3      # Reducido para evitar sobreajuste      
+DT_MAX_DEPTH           = 4        # Mediano para capturar más patrones
+LR_MAX_ITER            = 2000     # Alto para asegurar convergencia
 
 N_JOBS                 = -1       # Usar todos los cores disponibles
 

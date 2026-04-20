@@ -61,7 +61,6 @@ def select_chi2(X: pd.DataFrame, y: pd.Series, k: int = CHI2_K_BEST):
         "p-value":    selector.pvalues_,
     }).sort_values("Chi2 Score", ascending=False)
 
-    print(f"[preprocessing] Chi2: {len(selected)}/{len(X.columns)} características seleccionadas.")
     return X_selected, selector, scores
 
 
@@ -126,20 +125,3 @@ def select_features(X: pd.DataFrame, y: pd.Series, strategy: str = FEATURE_SELEC
         raise ValueError(f"Estrategia desconocida: '{strategy}'")
 
 
-def scale_features(X_train: pd.DataFrame, X_test: pd.DataFrame = None):
-    """
-    Estandariza los predictores (media 0, desviación 1).
-
-    El scaler se ajusta SOLO sobre X_train para evitar fuga de información.
-    X_test se transforma aplicando los parámetros de entrenamiento.
-
-    Returns
-    -------
-    X_train_scaled : np.ndarray
-    X_test_scaled  : np.ndarray | None
-    scaler         : StandardScaler ajustado
-    """
-    scaler = StandardScaler()
-    X_train_sc = scaler.fit_transform(X_train)
-    X_test_sc  = scaler.transform(X_test) if X_test is not None else None
-    return X_train_sc, X_test_sc, scaler

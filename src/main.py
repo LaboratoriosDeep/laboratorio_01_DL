@@ -7,7 +7,7 @@ Secuencia:
   1. Carga y verificación del dataset
   2. Exploración y distribución de la variable objetivo
   3. Selección de características
-  4. Evaluación LOOCV de los tres modelos de ensamble
+  4. Evaluación Stratified Cross Validation de los tres modelos de ensamble
   5. Comparación e interpretación de resultados
   6. Generación de figuras y tabla comparativa
 """
@@ -16,6 +16,7 @@ import sys
 import os
 import warnings
 import numpy as np
+import pandas as pd
 
 # Agregar directorio actual al path para imports locales
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -24,11 +25,11 @@ warnings.filterwarnings("ignore")  # suprimir warnings de convergencia en logs
 
 from config import (
     DATA_FILE, TARGET_COL, FEATURE_SELECTION,
-    IMBALANCE_STRATEGY, CV_STRATEGY
+    IMBALANCE_STRATEGY
 )
 from data_loader    import load_data, verify_integrity, get_X_y
 from preprocessing  import select_features, select_chi2
-from evaluation     import loocv_evaluate, compare_models, get_classification_report_df
+from evaluation     import compare_models, get_classification_report_df, stratified_evaluate
 from visualization  import (
     plot_class_distribution, plot_confusion_matrix,
     plot_metrics_comparison, plot_feature_importance,
@@ -89,11 +90,11 @@ def run_experiment() -> None:
 
     # ── 3. Protocolo de validación ────────────────────────────────────────────
     print_banner("3. PROTOCOLO EXPERIMENTAL")
-    print(f"  Validación cruzada : Leave-One-Out (LOOCV)")
-    print(f"  Justificación      : Maximizar uso de datos con n={len(y_full)}")
+    print(f"  Validación cruzada : Stratified Cross Validation.")
+    print(f"  Justificación      : Asegurar distribución adecuada en cada fold.")
     print(f"  Desbalance         : Estrategia '{IMBALANCE_STRATEGY}'")
-    print(f"  Variable objetivo  : {TARGET_COL} ({len(y_full.unique())} clases)")
-    print(f"  Random state       : 42 (reproducibilidad)")
+    print(f"  Variable objetivo  : {TARGET_COL} ({len(y_full.unique())} clases).")
+    print(f"  Random state       : 42 (reproducibilidad).")
 
     X_arr = X_sel.values
     y_arr = y_full.values
@@ -102,7 +103,7 @@ def run_experiment() -> None:
     print_banner("4. EVALUACIÓN DE MODELOS DE ENSAMBLE")
 
     print("\n[4a] BAGGING (BaggingClassifier + DecisionTree)")
-    r_bag = loocv_evaluate(
+    r_bag = stratified_evaluate(
         X_arr, y_arr,
         train_fn=train_bagging,
         predict_fn=predict_bagging,
@@ -111,7 +112,7 @@ def run_experiment() -> None:
 
     print_banner("", width=70, char="-")
     print("[4b] BOOSTING (AdaBoost + DecisionStump)")
-    r_boo = loocv_evaluate(
+    r_boo = stratified_evaluate(
         X_arr, y_arr,
         train_fn=train_boosting,
         predict_fn=predict_boosting,
@@ -120,7 +121,7 @@ def run_experiment() -> None:
 
     print_banner("", width=70, char="-")
     print("[4c] STACKING (GNB + DT + LR → LR meta-modelo)")
-    r_sta = loocv_evaluate(
+    r_sta = stratified_evaluate(
         X_arr, y_arr,
         train_fn=train_stacking,
         predict_fn=predict_stacking,
@@ -134,7 +135,7 @@ def run_experiment() -> None:
     tabla = compare_models(all_results)
     
     print("\n╔" + "═" * 68 + "╗")
-    print("║" + " " * 20 + "TABLA COMPARATIVA (LOOCV)" + " " * 23 + "║")
+    print("║" + " " * 20 + "TABLA COMPARATIVA (Stratified CV)" + " " * 23 + "║")
     print("╚" + "═" * 68 + "╝\n")
     print(tabla.to_string(index=False))
 
@@ -165,13 +166,13 @@ def run_experiment() -> None:
     print_banner("7. INTERPRETACIÓN DE RESULTADOS")
     _print_interpretation(r_bag, r_boo, r_sta, y_arr, tabla)
 
-    print_banner("EXPERIMENTO COMPLETADO ✓", char="═")
-    print(f"  📊 Figuras guardadas en : {os.path.relpath('reports/figuras')}")
-    print(f"  📄 Tablas guardadas en  : {os.path.relpath('reports/tablas')}")
+    print_banner("EJECUCIÓN COMPLETADA", char="═")
+    print(f"Figuras guardadas en : {os.path.relpath('reports/figuras')}")
+    print(f"Tablas guardadas en  : {os.path.relpath('reports/tablas')}")
     print("\n  Para visualizar los resultados:")
-    print("    - Revise las matrices de confusión en reports/figuras/")
-    print("    - Analice la tabla comparativa en reports/tablas/")
-    print("    - Compare las métricas en el gráfico de comparación\n")
+    print("    - Las matrices de confusión se han guardado en reports/figuras/")
+    print("    - La tabla comparativa se ha guardado en reports/tablas/")
+    print("    - Las métricas son visualizables en el gráfico de comparación\n")
 
 
 def _print_interpretation(r_bag, r_boo, r_sta, y_true, tabla: 'pd.DataFrame') -> None:
@@ -214,23 +215,8 @@ def _print_interpretation(r_bag, r_boo, r_sta, y_true, tabla: 'pd.DataFrame') ->
     print(f"  Diferencia   : {diff:.4f} ({diff*100:.2f}%)")
     
     if diff < 0.05:
-        print(f"\n  ⚠ Las diferencias son pequeñas (< 5%) - Los modelos tienen")
+        print(f"\n  Las diferencias son pequeñas (< 5%) - Los modelos tienen")
         print(f"     rendimiento similar en este dataset pequeño.")
-
-    print(f"\n  OBSERVACIONES METODOLÓGICAS")
-    print(f"  {'─' * 50}")
-    print(
-        "\n  · El F1-score macro es la métrica principal por el desbalance de clases."
-        "\n  · Con n={} los intervalos de confianza son amplios; pequeñas diferencias".format(len(y_true))
-        + "\n    entre modelos pueden deberse a varianza muestral."
-        "\n  · Boosting puede sobreajustar con pocos datos si la clase minoritaria"
-        "\n    tiene muy pocas muestras (riesgo de memorización)."
-        "\n  · Bagging reduce la varianza mediante bootstrap, estabilizando"
-        "\n    las predicciones de árboles individuales."
-        "\n  · Stacking combina perspectivas complementarias (probabilístico,"
-        "\n    no lineal, lineal), siendo robusto conceptualmente aunque no"
-        "\n    siempre superior numéricamente en datasets tan pequeños."
-    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
