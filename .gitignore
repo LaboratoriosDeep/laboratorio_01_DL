@@ -1,0 +1,5 @@
+# Ignorar datos
+
+
+# Ignorar carpetas ocultas de Python
+__pycache__/
