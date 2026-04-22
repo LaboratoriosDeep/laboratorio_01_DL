@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import seaborn as sns
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, roc_curve, auc
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from config import REPORTS_FIG_DIR, REPORTS_TAB_DIR, TARGET_COL
 
 # Estilo global
@@ -55,7 +55,7 @@ def plot_class_distribution(y: pd.Series, title: str = None,
     print(f"[viz] Guardado: {path}")
 
 
-# ── 2. Heatmap de matriz de confusión mejorado ────────────────────────────────
+# ── 2. Heatmap de matriz de confusión ────────────────────────────────────────
 
 def plot_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray,
                           model_name: str = "Modelo",
@@ -68,7 +68,6 @@ def plot_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray,
     cm = confusion_matrix(y_true, y_pred)
     labels = sorted(np.unique(y_true))
     
-    # Crear matriz de porcentajes
     cm_percent = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis] * 100
     
     fig, ax = plt.subplots(figsize=(6, 5))
@@ -96,7 +95,7 @@ def plot_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray,
     print(f"[viz] Guardado: {path}")
 
 
-# ── 3. Comparativa de métricas mejorada ───────────────────────────────────────
+# ── 3. Comparativa de métricas ───────────────────────────────────────────────
 
 def plot_metrics_comparison(df_metrics: pd.DataFrame,
                             filename: str = "comparacion_modelos.png") -> None:
@@ -116,7 +115,6 @@ def plot_metrics_comparison(df_metrics: pd.DataFrame,
                         label=metric, color=PALETTE[i % len(PALETTE)],
                         alpha=0.85, edgecolor='black', linewidth=1)
         
-        # Anotaciones con valores
         for rect in rects:
             height = rect.get_height()
             ax.text(rect.get_x() + rect.get_width() / 2,
@@ -128,7 +126,7 @@ def plot_metrics_comparison(df_metrics: pd.DataFrame,
     ax.set_xticklabels(df_metrics["Modelo"], fontsize=11, fontweight='bold')
     ax.set_ylim(0, 1.15)
     ax.set_ylabel("Valor de la métrica", fontsize=12, fontweight='bold')
-    ax.set_title("Comparación de métricas entre modelos de ensamble (Stratified 10-Fold CV)",
+    ax.set_title("Comparación de métricas entre modelos de ensamble (LOOCV)",
                  fontsize=14, fontweight='bold', pad=20)
     ax.legend(loc="upper right", fontsize=10, framealpha=0.9)
     ax.grid(axis='y', alpha=0.3, linestyle='--')
@@ -140,7 +138,7 @@ def plot_metrics_comparison(df_metrics: pd.DataFrame,
     print(f"[viz] Guardado: {path}")
 
 
-# ── 4. Feature importance mejorado ────────────────────────────────────────────
+# ── 4. Feature importance ────────────────────────────────────────────────────
 
 def plot_feature_importance(scores: pd.DataFrame,
                             filename: str = "chi2_features.png") -> None:
@@ -155,7 +153,6 @@ def plot_feature_importance(scores: pd.DataFrame,
     bars = ax.barh(top["Feature"], top["Chi2 Score"], 
                    color="#4C72B0", alpha=0.85, edgecolor='black', linewidth=1)
     
-    # Añadir valores al final de cada barra
     for i, (bar, val) in enumerate(zip(bars, top["Chi2 Score"])):
         ax.text(val + 0.5, i, f'{val:.2f}',
                 va='center', ha='left', fontsize=9, fontweight='bold')
@@ -228,39 +225,8 @@ def plot_per_class_metrics(results: list,
     print(f"[viz] Guardado: {path}")
 
 
-# ── 6. Curva ROC (Stacking) ──────────────────────────────────────────────────
 
-def plot_roc_curve_stacking(result: dict,
-                            filename: str = "roc_curve_stacking.png") -> None:
-    """
-    Curva ROC del modelo Stacking usando las probabilidades out-of-fold
-    del Stratified 10-Fold CV. Solo aplica a clasificación binaria.
-    """
-    os.makedirs(REPORTS_FIG_DIR, exist_ok=True)
-
-    pos_label = int(np.unique(result["y_true"]).max())
-    fpr, tpr, _ = roc_curve(result["y_true"], result["y_pred_proba"][:, 1], pos_label=pos_label)
-    roc_auc = auc(fpr, tpr)
-
-    fig, ax = plt.subplots(figsize=(7, 6))
-    ax.plot(fpr, tpr, color=PALETTE[2], linewidth=2,
-            label=f"Stacking (AUC = {roc_auc:.3f})")
-    ax.plot([0, 1], [0, 1], "k--", linewidth=1, label="Clasificador aleatorio")
-    ax.set_xlabel("Tasa de falsos positivos (FPR)", fontsize=12, fontweight='bold')
-    ax.set_ylabel("Tasa de verdaderos positivos (TPR)", fontsize=12, fontweight='bold')
-    ax.set_title("Curva ROC – Stacking\n(Stratified 10-Fold CV, predicciones out-of-fold)",
-                 fontsize=13, fontweight='bold', pad=15)
-    ax.legend(loc="lower right", fontsize=10, framealpha=0.9)
-    ax.grid(alpha=0.3, linestyle='--')
-    plt.tight_layout()
-
-    path = os.path.join(REPORTS_FIG_DIR, filename)
-    fig.savefig(path, dpi=300, bbox_inches='tight')
-    plt.close(fig)
-    print(f"[viz] Guardado: {path}")
-
-
-# ── 7. Exportar tabla a CSV ───────────────────────────────────────────────────
+# ── 6. Exportar tabla a CSV ───────────────────────────────────────────────────
 
 def save_metrics_table(df_metrics: pd.DataFrame,
                        filename: str = "tabla_comparativa.csv") -> None:

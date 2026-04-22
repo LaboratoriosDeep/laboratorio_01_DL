@@ -7,7 +7,7 @@ Secuencia:
   1. Carga y verificación del dataset
   2. Exploración y distribución de la variable objetivo
   3. Selección de características
-  4. Evaluación Stratified Cross Validation de los tres modelos de ensamble
+  4. Evaluación LOOCV de los tres modelos de ensamble
   5. Comparación e interpretación de resultados
   6. Generación de figuras y tabla comparativa
 """
@@ -29,15 +29,15 @@ from config import (
 )
 from data_loader    import load_data, verify_integrity, get_X_y
 from preprocessing  import select_features, select_chi2
-from evaluation     import compare_models, get_classification_report_df, stratified_evaluate
+from evaluation     import compare_models, get_classification_report_df, loocv_evaluate
 from visualization  import (
     plot_class_distribution, plot_confusion_matrix,
     plot_metrics_comparison, plot_feature_importance,
-    plot_roc_curve_stacking, save_metrics_table
+    save_metrics_table
 )
 from bagging_model  import train_bagging,  predict_bagging
 from boosting_model import train_boosting, predict_boosting
-from stacking_model import train_stacking, predict_stacking, predict_proba_stacking
+from stacking_model import train_stacking, predict_stacking
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -90,8 +90,8 @@ def run_experiment() -> None:
 
     # ── 3. Protocolo de validación ────────────────────────────────────────────
     print_banner("3. PROTOCOLO EXPERIMENTAL")
-    print(f"  Validación cruzada : Stratified Cross Validation.")
-    print(f"  Justificación      : Asegurar distribución adecuada en cada fold.")
+    print(f"  Validación cruzada : Leave-One-Out Cross-Validation (LOOCV).")
+    print(f"  Justificación      : Máximo uso de datos disponibles, sin sesgo de partición.")
     print(f"  Desbalance         : Estrategia '{IMBALANCE_STRATEGY}'")
     print(f"  Variable objetivo  : {TARGET_COL} ({len(y_full.unique())} clases).")
     print(f"  Random state       : {RANDOM_STATE} (reproducibilidad).")
@@ -103,7 +103,7 @@ def run_experiment() -> None:
     print_banner("4. EVALUACIÓN DE MODELOS DE ENSAMBLE")
 
     print("\n[4a] BAGGING (BaggingClassifier + DecisionTree)")
-    r_bag = stratified_evaluate(
+    r_bag = loocv_evaluate(
         X_arr, y_arr,
         train_fn=train_bagging,
         predict_fn=predict_bagging,
@@ -112,7 +112,7 @@ def run_experiment() -> None:
 
     print_banner("", width=70, char="-")
     print("[4b] BOOSTING (AdaBoost + DecisionStump)")
-    r_boo = stratified_evaluate(
+    r_boo = loocv_evaluate(
         X_arr, y_arr,
         train_fn=train_boosting,
         predict_fn=predict_boosting,
@@ -121,11 +121,10 @@ def run_experiment() -> None:
 
     print_banner("", width=70, char="-")
     print("[4c] STACKING (GNB + DT + LR → LR meta-modelo)")
-    r_sta = stratified_evaluate(
+    r_sta = loocv_evaluate(
         X_arr, y_arr,
         train_fn=train_stacking,
         predict_fn=predict_stacking,
-        predict_proba_fn=predict_proba_stacking,
         model_name="Stacking"
     )
 
@@ -135,34 +134,25 @@ def run_experiment() -> None:
     tabla = compare_models(all_results)
     
     print("\n╔" + "═" * 68 + "╗")
-    print("║" + " " * 20 + "TABLA COMPARATIVA (Stratified CV)" + " " * 23 + "║")
+    print("║" + " " * 24 + "TABLA COMPARATIVA (LOOCV)" + " " * 27 + "║")
     print("╚" + "═" * 68 + "╝\n")
     print(tabla.to_string(index=False))
 
-    # Determinar mejor modelo por F1 macro
     best = tabla.iloc[0]
     print(f"\n  ► MEJOR MODELO por F1-score macro:")
     print(f"    {best['Modelo']:15s} → F1 = {best['F1-score macro']:.4f}")
 
-    # Análisis por clase
     print("\n  Análisis de rendimiento por clase:")
     for r in all_results:
         print(f"\n  {r['model']}:")
         class_report = get_classification_report_df(y_arr, r["y_pred"])
         print(class_report.to_string())
 
-    # Matrices de confusión
     print_banner("6. GENERACIÓN DE VISUALIZACIONES")
     for r in all_results:
         plot_confusion_matrix(y_arr, r["y_pred"], model_name=r["model"])
 
-    # Gráfico comparativo de métricas
     plot_metrics_comparison(tabla)
-
-    # Curva ROC del  modelo Stacking
-    plot_roc_curve_stacking(r_sta)
-
-    # Exportar tabla
     save_metrics_table(tabla)
 
     # ── 7. Interpretación textual ─────────────────────────────────────────────
@@ -205,7 +195,6 @@ def _print_interpretation(r_bag, r_boo, r_sta, y_true, tabla: 'pd.DataFrame') ->
         print(f"  {name:<12} → Recall clase {minority_cls}: {rec_minority:.3f}  "
               f"| F1 macro: {r['f1_macro']:.4f}")
 
-    # Análisis de diferencias entre modelos
     print(f"\n  ANÁLISIS COMPARATIVO")
     print(f"  {'─' * 50}")
     f1_scores = {r['model']: r['f1_macro'] for r in [r_bag, r_boo, r_sta]}
@@ -224,7 +213,6 @@ def _print_interpretation(r_bag, r_boo, r_sta, y_true, tabla: 'pd.DataFrame') ->
 
 # ─────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    # Crear directorios si no existen
     os.makedirs("reports/figuras", exist_ok=True)
     os.makedirs("reports/tablas", exist_ok=True)
     os.makedirs("data/raw", exist_ok=True)

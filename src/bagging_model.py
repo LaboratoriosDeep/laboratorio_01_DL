@@ -19,13 +19,6 @@ from base_estimators_balancing import make_decision_tree
 
 
 def build_bagging_model() -> BaggingClassifier:
-    """
-    Construye el clasificador Bagging con los hiperparámetros del config.
-
-    Returns
-    -------
-    BaggingClassifier listo para entrenar.
-    """
     model = BaggingClassifier(
         estimator=make_decision_tree(),
         n_estimators=BAGGING_N_ESTIMATORS,
@@ -37,13 +30,6 @@ def build_bagging_model() -> BaggingClassifier:
 
 
 def train_bagging(X_train: np.ndarray, y_train: np.ndarray) -> BaggingClassifier:
-    """
-    Entrena el modelo Bagging.
-
-    Returns
-    -------
-    model : BaggingClassifier ajustado
-    """
     model = build_bagging_model()
     model.fit(X_train, y_train)
     return model

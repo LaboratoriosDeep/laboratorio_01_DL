@@ -22,32 +22,27 @@ DATA_FILE = os.path.join(DATA_RAW_DIR, "15 atributos R0-R5.sav")
 # Columnas que identifican al paciente o son etiquetas de clase; se excluyen de X
 NON_FEATURE_COLS = ["ID", "GDS", "GDS_R1", "GDS_R2", "GDS_R3", "GDS_R4", "GDS_R5"]
 
-# Variable objetivo - GDS_R3: Codificación 1-3, 4-7 (2 clases binarias)
-TARGET_COL = "GDS_R3"
+TARGET_COL = "GDS_R2"
 
 # ── Protocolo experimental ────────────────────────────────────────────────────
-# Se utiliza stratified cross validation
-CV_N_FOLDS       = 10
 RANDOM_STATE     = 42
 
 # ── Tratamiento del desbalance ────────────────────────────────────────────────
-# "class_weight"  → pesos inversos de clase (sin generar datos nuevos)
+# "class_weight" → pesos inversos de clase en DT y LR
 IMBALANCE_STRATEGY = "class_weight"
 
 # ── Modelos base para Stacking ────────────────────────────────────────────────
-# Clasificadores que conforman el nivel 0 del stacking
 STACKING_BASE_ESTIMATORS = ["gnb", "dt", "lr"]
-# Meta-clasificador del nivel 1
 STACKING_META_ESTIMATOR   = "lr"
 
 # ── Parámetros de modelos ─────────────────────────────────────────────────────
-BAGGING_N_ESTIMATORS   = 100      # Aumentado para mejor rendimiento
+BAGGING_N_ESTIMATORS   = 100
 BOOSTING_N_ESTIMATORS  = 50
-BOOSTING_LEARNING_RATE = 0.3      # Reducido para evitar sobreajuste      
-DT_MAX_DEPTH           = 4        # Mediano para capturar más patrones
-LR_MAX_ITER            = 2000     # Alto para asegurar convergencia
+BOOSTING_LEARNING_RATE = 0.3
+DT_MAX_DEPTH           = 4
+LR_MAX_ITER            = 2000
 
-N_JOBS                 = -1       # Usar todos los cores disponibles
+N_JOBS                 = -1       # -1 usa todos los cores disponibles
 
 # ── Selección de características ──────────────────────────────────────────────
 # "all" → usar las 15 características

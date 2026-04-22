@@ -41,10 +41,7 @@ def make_logistic_regression() -> LogisticRegression:
 
 def make_gnb():
     """
-    Modelo Naive Bayes Gaussiano. 
-
-    Ya que Naive Bayes no tiene un parametro de class weights directo, se 
-    establecen priors iguales para las clases, ignorando los desbalances
-    en los datos y dandole mas importancia a la clase minoritaria.
+    Naive Bayes Gaussiano con priors estimados desde los datos de entrenamiento.
+    No admite class_weight, por lo que el desbalance se absorbe en los priors.
     """
-    return GaussianNB(priors=[0.5, 0.5]) 
+    return GaussianNB(priors=None)
